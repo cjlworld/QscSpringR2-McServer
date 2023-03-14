@@ -72,9 +72,8 @@ func main() {
 			fmt.Println("Quit!")
 			break
 		} else {
-			Move(ch) // 正常移动
-
 			mu.Lock()
+			Move(ch) // 正常移动
 			dataclone := data
 			mu.Unlock()
 
