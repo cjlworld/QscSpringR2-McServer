@@ -38,6 +38,7 @@ func (this *McServer) Login(md5str string, reply *DataPack) error {
 
 func (this *McServer) FetchClient(ClientMap DataPack, reply *DataPack) error {
 	reply.Opt = 'C'
+	fmt.Println("Receive a package from client!")
 	return nil
 }
 

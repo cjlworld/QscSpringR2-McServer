@@ -26,8 +26,10 @@ var (
 func KeepInTouch(client *rpc.Client) {
 	for {
 		mu.Lock()
-		TouchServer(client, data, 'T')
+		dataclone := data
 		mu.Unlock()
+
+		TouchServer(client, dataclone, 'T')
 		time.Sleep(time.Duration(50) * time.Millisecond) // 每隔 0.05s 通讯一次
 	}
 }
@@ -43,7 +45,7 @@ func TouchServer(client *rpc.Client, cur DataPack, option uint8) { // 与服务�
 
 	if reply.Opt == 'C' { // 符合
 		return
-	} else { // 不符合就强制拉回
+	} else if option != 'Q' { // 不符合就强制拉回, 如果是 Q 就不用了
 		mu.Lock()
 		data = reply
 		mu.Unlock()
@@ -64,17 +66,19 @@ func main() {
 		PrintMap()
 		var ch uint8 = Getchar()
 		// fmt.Println("input char:", ch)
-		if ch == 'q' || ch == 'Q' {
-			// 结束游戏
-			TouchServer(client, data, 'Q')
-			mu.Lock()
-			fmt.Println("Quit")
+		if ch == 'q' || ch == 'Q' { // 结束游戏
+			mu.Lock()                      // Lock 掉, 这样其他进程就阻塞了
+			TouchServer(client, data, 'Q') // 退出前最后一次请求数据
+			fmt.Println("Quit!")
 			break
 		} else {
+			Move(ch) // 正常移动
+
 			mu.Lock()
-			Move(ch)
-			go TouchServer(client, data, data.Opt) // 同步数据
+			dataclone := data
 			mu.Unlock()
+
+			go TouchServer(client, dataclone, data.Opt) // 同步数据
 		}
 	}
 	client.Close()
@@ -158,6 +162,7 @@ func Login(client *rpc.Client) { // 登录模块
 	fmt.Println("Login successfully!")
 }
 
+// 还没找到清屏函数
 // func cls() { // 清屏
 // 	c := exec.Command("clear")
 // 	c.Stdout = os.Stdout
