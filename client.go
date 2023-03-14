@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/rpc"
 	"sync"
+	"time"
 )
 
 const Version string = "1.12.2"
@@ -22,11 +23,20 @@ var (
 	data DataPack
 )
 
+func KeepInTouch(client *rpc.Client) {
+	for {
+		mu.Lock()
+		TouchServer(client, data, 'T')
+		mu.Unlock()
+		time.Sleep(time.Duration(50) * time.Millisecond) // 每隔 0.05s 通讯一次
+	}
+}
+
 func TouchServer(client *rpc.Client, cur DataPack, option uint8) { // 与服务器同步数据
 	cur.Opt = option
 	var reply DataPack
 
-	err := client.Call("McServer.CheckData", cur, &reply)
+	err := client.Call("McServer.FetchClient", cur, &reply)
 	if err != nil {
 		fmt.Println(nil, err)
 	}
@@ -49,20 +59,25 @@ func main() {
 	}
 	Login(client)
 
+	go KeepInTouch(client)
 	for {
 		PrintMap()
 		var ch uint8 = Getchar()
 		// fmt.Println("input char:", ch)
 		if ch == 'q' || ch == 'Q' {
 			// 结束游戏
-			fmt.Println("Quit")
-		} else {
-			Move(ch)
+			TouchServer(client, data, 'Q')
 			mu.Lock()
+			fmt.Println("Quit")
+			break
+		} else {
+			mu.Lock()
+			Move(ch)
 			go TouchServer(client, data, data.Opt) // 同步数据
 			mu.Unlock()
 		}
 	}
+	client.Close()
 }
 
 func Getchar() uint8 { // 获取输入字符，自动过滤除 WASDQ 以外的字符
@@ -80,9 +95,6 @@ func Getchar() uint8 { // 获取输入字符，自动过滤除 WASDQ 以外的�
 }
 
 func Move(ch uint8) { //根据 ch 移动 data
-	mu.Lock()
-	defer mu.Unlock()
-
 	var dx, dy int
 
 	if ch == 'W' || ch == 'w' {

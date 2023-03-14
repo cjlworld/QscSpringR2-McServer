@@ -10,6 +10,8 @@ import (
 	"strings"
 )
 
+const Version string = "1.12.2" // 版本号
+
 type McServer struct {
 }
 
@@ -34,7 +36,7 @@ func (this *McServer) Login(md5str string, reply *DataPack) error {
 	return nil
 }
 
-func (this *McServer) CheckData(ClientMap DataPack, reply *DataPack) error {
+func (this *McServer) FetchClient(ClientMap DataPack, reply *DataPack) error {
 	reply.Opt = 'C'
 	return nil
 }
@@ -74,6 +76,7 @@ func InitUserData() {
 	// Read usermd5
 	scanner.Scan()
 	usermd5 = scanner.Text()
+	usermd5 = usermd5 + "|" + Version
 	fmt.Println(usermd5)
 
 	// Read (x,y)
