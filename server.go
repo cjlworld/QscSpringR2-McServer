@@ -22,7 +22,7 @@ type DataPack struct {
 	Mymap [8][8]int
 }
 
-func (this *McServer) Login(md5str string, reply *DataPack) error {
+func (this *McServer) Login(md5str string, reply *DataPack) error { // 登录函数
 	//fmt.Println(md5str)
 	//fmt.Println(usermd5)
 	if md5str != usermd5 {
@@ -36,17 +36,67 @@ func (this *McServer) Login(md5str string, reply *DataPack) error {
 	return nil
 }
 
+func Compare(a DataPack, b DataPack) bool { // 比较两个数据包除了 option 的部分，相同返回 true，不同返回 false
+	if a.Id != b.Id {
+		return false
+	} else if a.X != b.X || a.Y != b.Y {
+		return false
+	} else {
+		for i := 0; i < 8; i++ {
+			for j := 0; j < 8; j++ {
+				if a.Mymap[i][j] != b.Mymap[i][j] {
+					return false
+				}
+			}
+		}
+	}
+	return true
+}
+
+// 不知道服务端要不要加锁
+// 听说 RPC 服务有缓冲区来着
 func (this *McServer) FetchClient(ClientMap DataPack, reply *DataPack) error {
 	reply.Opt = 'C'
 	fmt.Println("Receive a package from client!")
+	// 根据 id 判断
+	// 若相同，则比对
+	// 若是比较早的 id，略过
+	// 若是下一个 id，且 命令为 WASDQ，保存
+
+	if ClientMap.Opt == 'Q' { // 结束游戏，保存，以玩家的数据为准
+		data = ClientMap
+		return nil
+	} else if ClientMap.Id < data.Id { // 过时的数据包，不比对
+		return nil
+	} else if ClientMap.Id == data.Id { // 验证的数据包，以服务器的为准
+		if Compare(data, ClientMap) { // 数据相同
+			reply.Opt = 'C' // Correct!
+			return nil
+		} else { // 数据不同，以服务端为准
+			*reply = data
+			reply.Opt = 'F' // Fault
+			return nil
+		}
+	} else { // 客户端的数据 更新 服务端的数据
+		// 用服务端的数据验算
+		Move(ClientMap.Opt)
+		if Compare(data, ClientMap) { // 数据相同
+			reply.Opt = 'C'
+			return nil
+		} else { // 否则客户端的数据错了
+			*reply = data
+			reply.Opt = 'F' // Fault
+			return nil
+		}
+	}
 	return nil
 }
 
 var usermd5 string
-var data DataPack
+var data DataPack // 服务器的地图
 
 func main() {
-	InitUserData() // 从文件读入初始数据
+	ReadUserData() // 从文件读入初始数据
 
 	fmt.Println("Starting server...")
 
@@ -61,7 +111,7 @@ func main() {
 	rpc.Accept(listener)
 }
 
-func InitUserData() {
+func ReadUserData() { // 读入用户数据和地图
 	fmt.Println("Init user data...")
 
 	file, err := os.Open("userdb.txt")
@@ -109,4 +159,39 @@ func InitUserData() {
 
 	data.Id = 0
 	fmt.Println("Successfully init userdata!")
+}
+
+func Move(ch uint8) { //根据 ch 移动 data
+	data.Id++ // 操作序号
+	var dx, dy int
+
+	if ch == 'W' || ch == 'w' {
+		data.Opt = 'W'
+		dx, dy = -1, 0
+	} else if ch == 'A' || ch == 'a' {
+		data.Opt = 'A'
+		dx, dy = 0, -1
+	} else if ch == 'S' || ch == 's' {
+		data.Opt = 'S'
+		dx, dy = 1, 0
+	} else if ch == 'D' || ch == 'd' {
+		data.Opt = 'D'
+		dx, dy = 0, 1
+	} else {
+		// 前面的已经屏蔽了
+		fmt.Println("Are you kidding me?")
+	}
+
+	var nx int = data.X + dx
+	var ny int = data.Y + dy
+	// fmt.Println("(nx, ny): ", nx, ny)
+
+	if nx < 0 || nx >= 8 || ny < 0 || ny >= 8 {
+		return // 出界
+	} else if data.Mymap[nx][ny] == 1 {
+		return // 有障碍物
+	} else {
+		// move
+		data.X, data.Y = nx, ny
+	}
 }

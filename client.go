@@ -43,9 +43,11 @@ func TouchServer(client *rpc.Client, cur DataPack, option uint8) { // 与服务�
 		fmt.Println(nil, err)
 	}
 
-	if reply.Opt == 'C' { // 符合
+	if option == 'Q' { // 结束游戏不用检查数据包，以 client 端的为准
 		return
-	} else if option != 'Q' { // 不符合就强制拉回, 如果是 Q 就不用了
+	} else if reply.Opt == 'C' { // 符合
+		return
+	} else { // 不符合就强制拉回
 		mu.Lock()
 		data = reply
 		mu.Unlock()
@@ -57,11 +59,12 @@ func main() {
 
 	client, err := rpc.Dial("tcp", ":25565")
 	if err != nil {
-		fmt.Println("Error: ", err)
+		fmt.Println("Can't connect server: ", err)
+		return
 	}
 	Login(client)
 
-	go KeepInTouch(client)
+	go KeepInTouch(client) // 每 0.05秒核对一次
 	for {
 		PrintMap()
 		var ch uint8 = Getchar()
@@ -98,6 +101,7 @@ func Getchar() uint8 { // 获取输入字符，自动过滤除 WASDQ 以外的�
 }
 
 func Move(ch uint8) { //根据 ch 移动 data
+	data.Id++ // 操作序号
 	var dx, dy int
 
 	if ch == 'W' || ch == 'w' {
@@ -114,15 +118,15 @@ func Move(ch uint8) { //根据 ch 移动 data
 		dx, dy = 0, 1
 	} else {
 		// 前面的已经屏蔽了
-		fmt.Println("Input Error!")
+		fmt.Println("Are you kidding me?")
 	}
 
 	var nx int = data.X + dx
 	var ny int = data.Y + dy
-	fmt.Println("(nx, ny): ", nx, ny)
+	// fmt.Println("(nx, ny): ", nx, ny)
 
 	if nx < 0 || nx >= 8 || ny < 0 || ny >= 8 {
-		return // 已经 defer 了，这里应该不用 unlock 了
+		return // 出界
 	} else if data.Mymap[nx][ny] == 1 {
 		return // 有障碍物
 	} else {
