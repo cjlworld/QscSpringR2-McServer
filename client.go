@@ -22,7 +22,7 @@ var (
 	data DataPack
 )
 
-func FetchDataFromServer(client *rpc.Client, cur DataPack, option uint8) {
+func TouchServer(client *rpc.Client, cur DataPack, option uint8) { // 与服务器同步数据
 	cur.Opt = option
 	var reply DataPack
 
@@ -59,7 +59,7 @@ func main() {
 		} else {
 			Move(ch)
 			mu.Lock()
-			go FetchDataFromServer(client, data, data.Opt)
+			go TouchServer(client, data, data.Opt) // 同步数据
 			mu.Unlock()
 		}
 	}
