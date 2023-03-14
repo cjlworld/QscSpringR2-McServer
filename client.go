@@ -4,10 +4,10 @@ import (
 	"crypto/md5"
 	"fmt"
 	"net/rpc"
-	"os"
-	"os/exec"
 	"sync"
 )
+
+const Version string = "1.12.2"
 
 type DataPack struct {
 	Id    int   // 操作序号
@@ -22,27 +22,21 @@ var (
 	data DataPack
 )
 
-func cls() { // 清屏
-	command := exec.Command("clear")
-	command.Stdout = os.Stdout
-	command.Run()
-}
+func FetchDataFromServer(client *rpc.Client, cur DataPack, option uint8) {
+	cur.Opt = option
+	var reply DataPack
 
-func PrintMap() { // 打印地图
-	mu.Lock()
-	defer mu.Unlock()
+	err := client.Call("McServer.CheckData", cur, &reply)
+	if err != nil {
+		fmt.Println(nil, err)
+	}
 
-	cls()
-
-	for i := 0; i < 8; i++ {
-		for j := 0; j < 8; j++ {
-			if i == data.X && j == data.Y {
-				fmt.Print("2 ")
-			} else {
-				fmt.Print(data.Mymap[i][j], " ")
-			}
-		}
-		fmt.Print("\n")
+	if reply.Opt == 'C' { // 符合
+		return
+	} else { // 不符合就强制拉回
+		mu.Lock()
+		data = reply
+		mu.Unlock()
 	}
 }
 
@@ -57,20 +51,32 @@ func main() {
 
 	for {
 		PrintMap()
-		var ch uint8
-		fmt.Scan(&ch)
-		fmt.Println("input char:", ch)
-
+		var ch uint8 = Getchar()
+		// fmt.Println("input char:", ch)
 		if ch == 'q' || ch == 'Q' {
 			// 结束游戏
 			fmt.Println("Quit")
-		} else if ch != 'W' && ch != 'w' && ch != 'a' && ch != 'A' && ch != 's' && ch != 'S' && ch != 'D' && ch != 'd' {
-			// 输入的不是要操作的数
-			continue
 		} else {
 			Move(ch)
+			mu.Lock()
+			go FetchDataFromServer(client, data, data.Opt)
+			mu.Unlock()
 		}
 	}
+}
+
+func Getchar() uint8 { // 获取输入字符，自动过滤除 WASDQ 以外的字符
+	var ch uint8
+	for {
+		fmt.Scanf("%c", &ch)
+		if ch != 'W' && ch != 'w' && ch != 'a' && ch != 'A' && ch != 's' && ch != 'S' && ch != 'D' && ch != 'd' && ch != 'q' && ch != 'Q' {
+			continue
+		} else {
+			break
+		}
+		// fmt.Println("input char:", ch)
+	}
+	return ch
 }
 
 func Move(ch uint8) { //根据 ch 移动 data
@@ -120,7 +126,7 @@ func Login(client *rpc.Client) { // 登录模块
 		fmt.Scan(&passwd)
 		// fmt.Println(passwd)
 		usermd5 := fmt.Sprintf("%x", md5.Sum([]byte(passwd+"|"+username)))
-		usermd5 = usermd5 + "|" + username
+		usermd5 = usermd5 + "|" + username + "|" + Version
 		fmt.Println(usermd5)
 
 		var pkg DataPack
@@ -138,4 +144,30 @@ func Login(client *rpc.Client) { // 登录模块
 		}
 	}
 	fmt.Println("Login successfully!")
+}
+
+// func cls() { // 清屏
+// 	c := exec.Command("clear")
+// 	c.Stdout = os.Stdout
+// 	c.Run()
+// 	c = exec.Command("pause")
+// 	c.Run()
+// }
+
+func PrintMap() { // 打印地图
+	mu.Lock()
+	defer mu.Unlock()
+
+	//	cls()
+
+	for i := 0; i < 8; i++ {
+		for j := 0; j < 8; j++ {
+			if i == data.X && j == data.Y {
+				fmt.Print("2 ")
+			} else {
+				fmt.Print(data.Mymap[i][j], " ")
+			}
+		}
+		fmt.Print("\n")
+	}
 }

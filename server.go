@@ -20,17 +20,22 @@ type DataPack struct {
 	Mymap [8][8]int
 }
 
-func (this *McServer) Login(md5str string, pkg *DataPack) error {
+func (this *McServer) Login(md5str string, reply *DataPack) error {
 	//fmt.Println(md5str)
 	//fmt.Println(usermd5)
 	if md5str != usermd5 {
-		pkg.Opt = 'W'
+		reply.Opt = 'W'
 		fmt.Println("Wrong!")
 		return nil
 	}
-	*pkg = data
-	pkg.Opt = 'A'
-	pkg.Id = 0
+	*reply = data
+	reply.Opt = 'A'
+	reply.Id = 0
+	return nil
+}
+
+func (this *McServer) CheckData(ClientMap DataPack, reply *DataPack) error {
+	reply.Opt = 'C'
 	return nil
 }
 
