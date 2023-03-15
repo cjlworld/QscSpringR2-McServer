@@ -24,7 +24,8 @@ type DataPack struct {
 func (this *McServer) Login(md5str string, reply *DataPack) error { // 登录函数
 	//fmt.Println(md5str)
 	//fmt.Println(usermd5)
-	if md5str != usermd5 {
+	server_md5str := usermd5 + "|" + Version // 加上 Version 判断
+	if md5str != server_md5str {
 		reply.Opt = 'W'
 		fmt.Println("Wrong!")
 		return nil
@@ -62,7 +63,7 @@ func CloseConnection() error { // 延迟关闭服务端
 // 听说 RPC 服务有缓冲区来着
 func (this *McServer) FetchClient(ClientMap DataPack, reply *DataPack) error {
 	reply.Opt = 'C'
-	fmt.Println("Receive a package from client!")
+	// fmt.Println("Receive a package from client!")
 	// 根据 id 判断
 	// 若相同，则比对
 	// 若是比较早的 id，略过
@@ -72,6 +73,7 @@ func (this *McServer) FetchClient(ClientMap DataPack, reply *DataPack) error {
 		return nil
 	} else if ClientMap.Opt == 'Q' { // 结束游戏，保存，以玩家的数据为准
 		data = ClientMap
+		SaveUserData()       // 保存数据
 		go CloseConnection() // 服务端两秒后关闭连接
 		return nil
 	} else if ClientMap.Id < data.Id { // 过时的数据包，不比对
@@ -90,6 +92,7 @@ func (this *McServer) FetchClient(ClientMap DataPack, reply *DataPack) error {
 		Move(ClientMap.Opt)
 		if Compare(data, ClientMap) { // 数据相同
 			reply.Opt = 'C'
+			fmt.Printf("Move to (%d, %d)\n", data.X, data.Y)
 			return nil
 		} else { // 否则客户端的数据错了
 			*reply = data
@@ -105,7 +108,7 @@ var data DataPack // 服务器的地图
 var listener net.Listener
 
 func main() {
-	ReadUserData() // 从文件读入初始数据
+	LoadUserData() // 从文件读入初始数据
 
 	fmt.Println("Starting server...")
 
@@ -119,9 +122,33 @@ func main() {
 	rpc.Register(mcs)
 	rpc.Accept(listener)
 	listener.Close()
+	time.Sleep(time.Duration(5) * time.Second) // 延时关闭
 }
 
-func ReadUserData() { // 读入用户数据和地图
+func SaveUserData() { // 保存用户数据
+	fmt.Println("Saving user data...")
+
+	file, err := os.OpenFile("userdb.txt", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 777) // 读写混合，没有就新建，清空
+	if err != nil {
+		fmt.Println("Open File error: ", err)
+		return
+	}
+	defer file.Close() // 别忘了关闭文件
+
+	writer := bufio.NewWriter(file)
+	fmt.Fprintln(writer, usermd5)
+	fmt.Fprintf(writer, "%d %d\n", data.X, data.Y)
+	for i := 0; i < 8; i++ {
+		for j := 0; j < 8; j++ {
+			fmt.Fprintf(writer, "%d ", data.Mymap[i][j])
+		}
+		fmt.Fprintf(writer, "\n")
+	}
+	writer.Flush() // 刷新缓存区
+	fmt.Println("Save all!")
+}
+
+func LoadUserData() { // 读入用户数据和地图
 	fmt.Println("Init user data...")
 
 	file, err := os.Open("userdb.txt")
@@ -136,7 +163,7 @@ func ReadUserData() { // 读入用户数据和地图
 
 	// Read usermd5
 	fmt.Fscanf(reader, "%s\n", &usermd5) // fmt 要加 '\n'
-	usermd5 = usermd5 + "|" + Version
+	// usermd5 = usermd5 + "|" + Version, 在判断时加
 	fmt.Println(usermd5)
 
 	// Read (x,y)
