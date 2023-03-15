@@ -6,8 +6,6 @@ import (
 	"net"
 	"net/rpc"
 	"os"
-	"strconv"
-	"strings"
 	"time"
 )
 
@@ -133,41 +131,27 @@ func ReadUserData() { // 读入用户数据和地图
 	}
 	defer file.Close()
 
-	// 创建一个 bufio.Scanner 对象，用于逐行读取文件
-	scanner := bufio.NewScanner(file)
+	// 创建一个 bufio.Reader 对象，用于逐行读取文件
+	reader := bufio.NewReader(file)
 
 	// Read usermd5
-	scanner.Scan()
-	usermd5 = scanner.Text()
+	fmt.Fscanf(reader, "%s\n", &usermd5) // fmt 要加 '\n'
 	usermd5 = usermd5 + "|" + Version
 	fmt.Println(usermd5)
 
 	// Read (x,y)
-	scanner.Scan()
-	parts := strings.Split(scanner.Text(), " ")
-	data.X, _ = strconv.Atoi(parts[0])
-	data.Y, _ = strconv.Atoi(parts[1])
+	fmt.Fscanf(reader, "%d %d\n", &data.X, &data.Y)
 	fmt.Println("x: ", data.X)
 	fmt.Println("y: ", data.Y)
 
 	// Read map
-	var i = 0
-	for scanner.Scan() {
-		line := scanner.Text()
-
-		var j = 0
-		for _, s := range strings.Split(line, " ") {
-			//fmt.Println(s)
-			if s == "" {
-				continue
-			}
-			num, _ := strconv.Atoi(s)
-			data.Mymap[i][j] = num
-			j++
+	for i := 0; i < 8; i++ {
+		for j := 0; j < 8; j++ {
+			fmt.Fscanf(reader, "%d", &data.Mymap[i][j])
 		}
-		i++
+		fmt.Fscanf(reader, "\n")
 	}
-	// fmt.Println(data.Mymap)
+	fmt.Println(data.Mymap)
 
 	data.Id = 0
 	fmt.Println("Successfully init userdata!")
