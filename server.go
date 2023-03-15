@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const Version string = "1.12.2" // 版本号
@@ -53,6 +54,12 @@ func Compare(a DataPack, b DataPack) bool { // 比较两个数据包除了 optio
 	return true
 }
 
+func CloseConnection() error { // 延迟关闭服务端
+	time.Sleep(time.Duration(2) * time.Second) // 两秒后关
+	listener.Close()
+	return nil
+}
+
 // 不知道服务端要不要加锁
 // 听说 RPC 服务有缓冲区来着
 func (this *McServer) FetchClient(ClientMap DataPack, reply *DataPack) error {
@@ -62,9 +69,12 @@ func (this *McServer) FetchClient(ClientMap DataPack, reply *DataPack) error {
 	// 若相同，则比对
 	// 若是比较早的 id，略过
 	// 若是下一个 id，且 命令为 WASDQ，保存
-
-	if ClientMap.Opt == 'Q' { // 结束游戏，保存，以玩家的数据为准
+	if data.Opt == 'Q' {
+		// 游戏已经结束了
+		return nil
+	} else if ClientMap.Opt == 'Q' { // 结束游戏，保存，以玩家的数据为准
 		data = ClientMap
+		go CloseConnection() // 服务端两秒后关闭连接
 		return nil
 	} else if ClientMap.Id < data.Id { // 过时的数据包，不比对
 		return nil
@@ -94,6 +104,7 @@ func (this *McServer) FetchClient(ClientMap DataPack, reply *DataPack) error {
 
 var usermd5 string
 var data DataPack // 服务器的地图
+var listener net.Listener
 
 func main() {
 	ReadUserData() // 从文件读入初始数据
@@ -109,6 +120,7 @@ func main() {
 	mcs := new(McServer)
 	rpc.Register(mcs)
 	rpc.Accept(listener)
+	listener.Close()
 }
 
 func ReadUserData() { // 读入用户数据和地图

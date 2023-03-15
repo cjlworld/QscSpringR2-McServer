@@ -72,6 +72,7 @@ func main() {
 		if ch == 'q' || ch == 'Q' { // 结束游戏
 			mu.Lock()                      // Lock 掉, 这样其他进程就阻塞了
 			TouchServer(client, data, 'Q') // 退出前最后一次请求数据
+			client.Close()                 //客户端关闭连接
 			fmt.Println("Quit!")
 			break
 		} else {
