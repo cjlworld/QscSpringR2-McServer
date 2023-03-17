@@ -89,6 +89,10 @@ func (this *McServer) FetchClient(ClientMap DataPack, reply *DataPack) error {
 		}
 	} else { // 客户端的数据 更新 服务端的数据
 		// 用服务端的数据验算
+		// 事实上，有可能 KeepInTouch 的数据包会先发来，屏蔽掉即可 2023/3/17
+		if ClientMap.Opt == 'T' {
+			return nil
+		}
 		Move(ClientMap.Opt)
 		if Compare(data, ClientMap) { // 数据相同
 			reply.Opt = 'C'
@@ -203,6 +207,8 @@ func Move(ch uint8) { //根据 ch 移动 data
 	} else {
 		// 前面的已经屏蔽了
 		fmt.Println("Are you kidding me?")
+		fmt.Printf("%c\n", ch)
+		return
 	}
 
 	var nx int = data.X + dx

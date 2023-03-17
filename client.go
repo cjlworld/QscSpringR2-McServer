@@ -29,7 +29,7 @@ func KeepInTouch(client *rpc.Client) {
 		dataclone := data
 		mu.Unlock()
 
-		TouchServer(client, dataclone, 'T')
+		TouchServer(client, dataclone, 'T')              // Touch
 		time.Sleep(time.Duration(50) * time.Millisecond) // 每隔 0.05s 通讯一次
 	}
 }
@@ -60,13 +60,18 @@ func main() {
 	client, err := rpc.Dial("tcp", ":25565")
 	if err != nil {
 		fmt.Println("Can't connect server: ", err)
+		time.Sleep(time.Duration(5) * time.Second) //给人看的时间
 		return
 	}
 	Login(client)
 
 	go KeepInTouch(client) // 每 0.05秒核对一次
 	for {
+		cls() // 清屏
+		fmt.Println("Yon can press WASD to move, or Q to Quit. Please press enter to confirm your choice.")
+		fmt.Println("0 for air, 1 for obstacles and 2 for your character.\n")
 		PrintMap()
+
 		var ch uint8 = Getchar()
 		// fmt.Println("input char:", ch)
 		if ch == 'q' || ch == 'Q' { // 结束游戏
@@ -166,20 +171,20 @@ func Login(client *rpc.Client) { // 登录模块
 	fmt.Println("Login successfully!")
 }
 
-// 还没找到清屏函数
-// func cls() { // 清屏
-// 	c := exec.Command("clear")
-// 	c.Stdout = os.Stdout
-// 	c.Run()
-// 	c = exec.Command("pause")
-// 	c.Run()
-// }
+// 还没找到很好的清屏函数
+func cls() { // 清屏
+	// c := exec.Command("clear")
+	// c.Stdout = os.Stdout
+	// c.Run()
+	// c = exec.Command("pause")
+	// c.Run()
+	// tm.clear()
+	fmt.Print("\033[H\033[2J")
+}
 
 func PrintMap() { // 打印地图
 	mu.Lock()
 	defer mu.Unlock()
-
-	//	cls()
 
 	for i := 0; i < 8; i++ {
 		for j := 0; j < 8; j++ {
