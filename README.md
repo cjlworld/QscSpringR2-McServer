@@ -2,7 +2,7 @@
 
 ![](https://hitcounters.net/counter.php?id=11318&cmd=img_only&test=1)
 
-文档在 [Document.md](https://github.com/cjlworld/QscSpringR2-McServer/Document.md) 
+文档在 [QscSpringR2-McServer/Document.md](https://github.com/cjlworld/QscSpringR2-McServer/blob/master/Document.md) 
 
 运行方式：
 
