@@ -4,10 +4,10 @@
 
 ```go
 type DataPack struct {
-	Id    int   // 操作序号
-	Opt   uint8 // 操作指令
-	X, Y  int   // 人物位置
-	Mymap [8][8]int // 地图
+    Id    int   // 操作序号
+    Opt   uint8 // 操作指令
+    X, Y  int   // 人物位置
+    Mymap [8][8]int // 地图
 }
 ```
 
